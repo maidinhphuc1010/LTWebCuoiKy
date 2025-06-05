@@ -82,8 +82,14 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 		footerRender: () => <Footer />,
 
 		onPageChange: () => {
+			const location = window.location; // Sửa lỗi: dùng window.location thay vì const { location } = history
+			const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+			const isLoginPage = location.pathname.startsWith('/auth/login');
+			if (!currentUser && !isLoginPage) {
+				history.replace('/auth/login');
+				return;
+			}
 			if (initialState?.currentUser) {
-				const { location } = history;
 				const isUncheckPath = unCheckPermissionPaths.some((path) => window.location.pathname.includes(path));
 
 				if (location.pathname === '/') {
@@ -98,20 +104,38 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 			}
 		},
 
-		menuItemRender: (item: any, dom: any) => (
-			<a
-				className='not-underline'
-				key={item?.path}
-				href={item?.path}
-				onClick={(e) => {
-					e.preventDefault();
-					history.push(item?.path ?? '/');
-				}}
-				style={{ display: 'block' }}
-			>
-				{dom}
-			</a>
-		),
+		menuItemRender: (item: any, dom: any) => {
+			if (typeof item.onMenuClick === 'function') {
+				return (
+					<a
+						className='not-underline'
+						key={item?.path}
+						href='#'
+						onClick={(e) => {
+							e.preventDefault();
+							item.onMenuClick();
+						}}
+						style={{ display: 'block' }}
+					>
+						{dom}
+					</a>
+				);
+			}
+			return (
+				<a
+					className='not-underline'
+					key={item?.path}
+					href={item?.path}
+					onClick={(e) => {
+						e.preventDefault();
+						history.push(item?.path ?? '/');
+					}}
+					style={{ display: 'block' }}
+				>
+					{dom}
+				</a>
+			);
+		},
 
 		childrenRender: (dom) => (
 			<OIDCBounder>
