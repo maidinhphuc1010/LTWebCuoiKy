@@ -1,126 +1,64 @@
 import { useState, useEffect } from 'react';
-import type { BorrowRecord } from '../services/Borrow/typings';
 import { message } from 'antd';
+import {
+  getDevices,
+  createDevice as apiCreateDevice,
+  updateDevice as apiUpdateDevice,
+  deleteDevice as apiDeleteDevice,
+} from '../services/Device/index';
 
 export default function DeviceAdminModel() {
   const [data, setData] = useState<Device.Info[]>([]);
-  const [visible, setVisible] = useState<boolean>(false);
-  const [isEdit, setIsEdit] = useState<boolean>(false);
+  const [visible, setVisible] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
   const [row, setRow] = useState<Device.Info | null>(null);
 
-  // Thiết bị
-  const saveToLocalStorage = (devices: Device.Info[]) => {
-    localStorage.setItem('deviceData', JSON.stringify(devices));
-  };
-
-  const getDataDevice = () => {
+  const getDataDevice = async () => {
     try {
-      const dataLocal = JSON.parse(localStorage.getItem('deviceData') || '[]') as Device.Info[];
-      setData(dataLocal);
+      const res = await getDevices();
+      setData(res.data);
+      localStorage.setItem('deviceData', JSON.stringify(res.data));
     } catch (error) {
-      console.error('Lỗi khi đọc dữ liệu từ localStorage:', error);
-      setData([]);
+      message.error('Không thể lấy danh sách thiết bị từ máy chủ');
+      console.error(error);
     }
   };
 
   useEffect(() => {
-    getDataDevice(); // Fetch the device data on component mount
+    getDataDevice();
   }, []);
 
-  const addDevice = (device: Omit<Device.Info, 'id'>) => {
-    const existIndex = data.findIndex(
-      (d) =>
-        d.name === device.name &&
-        d.type === device.type &&
-        d.department === device.department,
-    );
-
-    const newData = [...data];
-
-    if (existIndex >= 0) {
-      newData[existIndex].quantity += device.quantity;
-    } else {
-      const maxId = data.length ? Math.max(...data.map((d) => d.id)) : 0;
-      newData.push({ ...device, id: maxId + 1 });
+  const addDevice = async (device: Omit<Device.Info, 'id'>) => {
+    try {
+      await apiCreateDevice(device);
+      message.success('Thêm thiết bị thành công');
+      await getDataDevice();
+    } catch (err) {
+      message.error('Lỗi khi thêm thiết bị');
+      console.error(err);
     }
-
-    setData(newData);
-    saveToLocalStorage(newData);
   };
 
-  const updateDevice = (device: Device.Info) => {
-    const newData = data.map((item) => (item.id === device.id ? device : item));
-    setData(newData);
-    saveToLocalStorage(newData);
+  const updateDevice = async (device: Device.Info) => {
+    try {
+      await apiUpdateDevice(device);
+      message.success('Cập nhật thiết bị thành công');
+      await getDataDevice();
+    } catch (err) {
+      message.error('Lỗi khi cập nhật thiết bị');
+      console.error(err);
+    }
   };
 
-  const deleteDevice = (id: number) => {
-    const newData = data.filter((item) => item.id !== id);
-    setData(newData);
-    saveToLocalStorage(newData);
-  };
-
-  // Gửi yêu cầu mượn thiết bị
-  const sendBorrowRequest = async ({
-    deviceId,
-    deviceName,
-    status,
-    returnDate,
-    description,
-    attachmentName,
-    attachmentUrl,
-  }: {
-    deviceId: number;
-    deviceName: string;
-    status: 'waiting';
-    returnDate: string;
-    description?: string;
-    attachmentName?: string;
-    attachmentUrl?: string;
-  }) => {
-    const borrowData: BorrowRecord[] = JSON.parse(localStorage.getItem('borrowData') || '[]');
-
-    // Lấy thông tin sinh viên từ localStorage
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-
-    // Kiểm tra nếu người dùng đã đăng nhập
-    if (!currentUser) {
-      message.error('Bạn cần đăng nhập để thực hiện yêu cầu mượn thiết bị.');
-      return;
+  const deleteDevice = async (id: number) => {
+    try {
+      await apiDeleteDevice(id);
+      message.success('Xóa thiết bị thành công');
+      await getDataDevice();
+    } catch (err) {
+      message.error('Lỗi khi xóa thiết bị');
+      console.error(err);
     }
-
-    // Kiểm tra thời gian trả có phải lớn hơn thời gian hiện tại không
-    const currentDate = new Date();
-    const returnDateObj = new Date(returnDate); // Chuyển đổi returnDate thành đối tượng Date
-
-    if (returnDateObj <= currentDate) {
-      message.error('Ngày trả phải lớn hơn thời gian hiện tại.');
-      return; // Nếu ngày trả không hợp lệ, không tiếp tục gửi yêu cầu
-    }
-
-    // Tạo một đối tượng sinh viên với thông tin từ currentUser
-    const student = {
-      id: currentUser.id,
-      fullName: currentUser.fullName,
-      code: currentUser.code,
-    };
-
-    // Tạo bản ghi mượn mới
-    const newBorrow: BorrowRecord = {
-      id: borrowData.length ? Math.max(...borrowData.map((b) => b.id)) + 1 : 1,
-      deviceName,
-      borrowDate: new Date().toISOString(),
-      returnDate,
-      status,
-      description,
-      attachmentName,
-      attachmentUrl,
-      student, // Sử dụng thông tin sinh viên từ currentUser
-    };
-
-    // Cập nhật dữ liệu mượn và lưu lại vào localStorage
-    const updatedBorrowData = [...borrowData, newBorrow];
-    localStorage.setItem('borrowData', JSON.stringify(updatedBorrowData));
   };
 
   return {
@@ -136,6 +74,5 @@ export default function DeviceAdminModel() {
     addDevice,
     updateDevice,
     deleteDevice,
-    sendBorrowRequest,
   };
 }

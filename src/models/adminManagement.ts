@@ -1,45 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import {
+  getAdmins,
+  saveAdmin as apiSaveAdmin,
+  deleteAdmin as apiDeleteAdmin,
+} from '@/services/admin';
 
-// Kiểu Admin.Info đã được khai báo trong typings.d.ts
-export default function adminManagementModel() {
-  const [data, setData] = useState<Admin.Info[]>([]); // Dữ liệu admin
-  const [visible, setVisible] = useState<boolean>(false); // Trạng thái của modal
-  const [isEdit, setIsEdit] = useState<boolean>(false); // Trạng thái chỉnh sửa
-  const [row, setRow] = useState<Admin.Info | null>(null); // Dữ liệu row đang chỉnh sửa
+export default function adminManagement() {
+  const [data, setData] = useState<Admin.Info[]>([]);
+  const [visible, setVisible] = useState(false);
+  const [isEdit, setIsEdit] = useState(false);
+  const [row, setRow] = useState<Admin.Info | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Lưu dữ liệu vào localStorage
   const saveToLocalStorage = (admins: Admin.Info[]) => {
     localStorage.setItem('adminData', JSON.stringify(admins));
   };
 
-  // Lấy dữ liệu từ localStorage
-  const getAdminData = () => {
+  const fetchAdmins = async () => {
+    setLoading(true);
     try {
-      const dataLocal = JSON.parse(localStorage.getItem('adminData') || '[]') as Admin.Info[];
-      setData(dataLocal);
-    } catch (error) {
-      console.error('Lỗi khi đọc dữ liệu từ localStorage:', error);
-      setData([]); // Nếu có lỗi, đặt lại dữ liệu thành mảng trống
+      const res = await getAdmins();
+      setData(res.data);
+      saveToLocalStorage(res.data);
+    } catch (err) {
+      setError('Không thể lấy danh sách admin');
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Thêm admin
+  useEffect(() => {
+    fetchAdmins(); // ✅ gọi đúng trong hook Umi
+  }, []);
+
+  const save = async (admin: Admin.Info) => {
+    try {
+      await apiSaveAdmin(admin);
+      await fetchAdmins();
+    } catch (err) {
+      setError('Lỗi khi lưu admin');
+      console.error(err);
+    }
+  };
+
+  const remove = async (adminId: string) => {
+    try {
+      await apiDeleteAdmin(adminId);
+      await fetchAdmins();
+    } catch (err) {
+      setError('Lỗi khi xoá admin');
+      console.error(err);
+    }
+  };
+
+  const getAdminData = async () => {
+    await fetchAdmins();
+  };
+
+  const deleteAdmin = async (adminId: string) => {
+    await remove(adminId);
+  };
+
   const addAdmin = (admin: Admin.Info) => {
-    const newData = [...data, admin]; // Thêm admin mới vào dữ liệu
+    const newData = [...data, admin];
     setData(newData);
     saveToLocalStorage(newData);
   };
 
-  // Cập nhật admin
   const updateAdmin = (admin: Admin.Info) => {
-    const newData = data.map((item) => (item.adminId === admin.adminId ? admin : item)); // Cập nhật thông tin admin
-    setData(newData);
-    saveToLocalStorage(newData);
-  };
-
-  // Xóa admin
-  const deleteAdmin = (adminId: string) => {
-    const newData = data.filter((item) => item.adminId !== adminId); // Xóa admin theo adminId
+    const newData = data.map((item) =>
+      item.adminId === admin.adminId ? admin : item
+    );
     setData(newData);
     saveToLocalStorage(newData);
   };
@@ -48,14 +81,17 @@ export default function adminManagementModel() {
     data,
     visible,
     setVisible,
-    row,
-    setRow,
     isEdit,
     setIsEdit,
-    setData,
+    row,
+    setRow,
+    loading,
+    error,
+    fetchAdmins,
     getAdminData,
+    save,
+    deleteAdmin,
     addAdmin,
     updateAdmin,
-    deleteAdmin,
   };
 }

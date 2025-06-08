@@ -92,7 +92,7 @@
 		path: '/admin',
 		name: 'Quản lý admin',
 		icon: 'UserOutlined',
-		component: './Admin/AdminManagement',
+		component: './admin/AdminManagement',
 		access: 'admin',
 	},
 	{

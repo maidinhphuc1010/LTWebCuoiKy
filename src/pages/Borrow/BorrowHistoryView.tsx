@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Tag } from 'antd';
+import { Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { BorrowRecord, BorrowStatus } from '../../services/Borrow/typings';
 import { statusColors, statusLabels } from '../../services/Borrow/constants';
@@ -9,36 +9,57 @@ const BorrowHistoryView: React.FC = () => {
   const [data, setData] = useState<BorrowRecord[]>([]);
 
   useEffect(() => {
-    const raw = localStorage.getItem('borrowData');
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+    try {
+      const raw = localStorage.getItem('borrowData');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 
-    if (raw && currentUser) {
-      try {
-        const allRecords = JSON.parse(raw) as BorrowRecord[];
-
-        // Filter records for the current student
-        const filteredRecords = allRecords.filter(
-          (record) => record.student.id === currentUser.id
-        );
-
-        // Sort records by borrow date, most recent first
-        const sortedRecords = filteredRecords.sort(
-          (a, b) => dayjs(b.borrowDate).valueOf() - dayjs(a.borrowDate).valueOf()
-        );
-
-        // Update state with sorted records
-        setData(sortedRecords);
-      } catch (error) {
-        console.error('Lỗi khi đọc dữ liệu lịch sử mượn:', error);
+      if (!currentUser) {
+        message.error('Bạn chưa đăng nhập.');
+        return;
       }
+
+      if (!raw) {
+        message.warning('Chưa có dữ liệu mượn thiết bị.');
+        return;
+      }
+
+      let allRecords: BorrowRecord[];
+
+      try {
+        allRecords = JSON.parse(raw);
+      } catch (parseError) {
+        console.error('❌ Lỗi khi parse borrowData:', parseError);
+        message.error('Dữ liệu lịch sử bị lỗi. Vui lòng thử lại.');
+        return;
+      }
+
+      const filteredRecords = allRecords.filter(
+        (record) => record?.student?.id === currentUser.id
+      );
+
+      const sortedRecords = filteredRecords.sort(
+        (a, b) => dayjs(b.borrowDate).valueOf() - dayjs(a.borrowDate).valueOf()
+      );
+
+      setData(sortedRecords);
+    } catch (error) {
+      console.error('❌ Lỗi tổng quát khi tải lịch sử mượn:', error);
+      message.error('Đã xảy ra lỗi khi tải dữ liệu.');
     }
   }, []);
 
   const columns: ColumnsType<BorrowRecord> = [
-    { title: 'ID', dataIndex: 'id', width: 60, align: 'center' },
-    { title: 'Sinh viên', dataIndex: ['student', 'fullName'], align: 'center' },
-    { title: 'Mã SV', dataIndex: ['student', 'code'], align: 'center' },
-    { title: 'Thiết bị', dataIndex: 'deviceName', align: 'center' },
+    {
+      title: 'STT',
+      dataIndex: 'id',
+      width: 60,
+      align: 'center',
+    },
+    {
+      title: 'Thiết bị',
+      dataIndex: 'deviceName',
+      align: 'center',
+    },
     {
       title: 'Ngày mượn',
       dataIndex: 'borrowDate',
@@ -74,11 +95,32 @@ const BorrowHistoryView: React.FC = () => {
       render: (_: any, record) =>
         record.status === 'rejected' ? record.rejectReason || 'Không có lý do' : '—',
     },
+    {
+      title: 'Mô tả',
+      dataIndex: 'description',
+      align: 'center',
+      render: (text?: string) => text || '—',
+    },
+    {
+      title: 'File đính kèm',
+      dataIndex: 'attachmentName',
+      align: 'center',
+      render: (_: any, record) =>
+        record.attachmentUrl ? (
+          <a href={record.attachmentUrl} target="_blank" rel="noopener noreferrer">
+            {record.attachmentName || 'Tải xuống'}
+          </a>
+        ) : (
+          '—'
+        ),
+    },
   ];
 
   return (
-    <div>
-      <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>Lịch sử mượn thiết bị</h2>
+    <div style={{ padding: '1rem' }}>
+      <h2 style={{ textAlign: 'center', marginBottom: '1rem' }}>
+        Lịch sử mượn thiết bị của bạn
+      </h2>
       <Table
         rowKey="id"
         dataSource={data}
