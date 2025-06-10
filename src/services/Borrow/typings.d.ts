@@ -1,21 +1,20 @@
-export type BorrowStatus = 'waiting' | 'borrowing' | 'returned' | 'rejected' | 'overdue';
+export type BorrowStatus = 'pending' | 'approved' | 'borrowing' | 'overdue' | 'returned' | 'rejected';
 
-export interface StudentShortInfo {
-  id: number;
+export interface Student {
+  id: string;
   fullName: string;
   code: string;
+  email: string;
 }
 
 export interface BorrowRecord {
-  id: number;
-  student: StudentShortInfo;
+  id: string;
+  student: Student;
   deviceName: string;
   borrowDate: string;
   returnDate: string;
   actualReturnDate?: string;
   status: BorrowStatus;
-  description?: string;
   rejectReason?: string;
-  attachmentUrl?: string;
-  attachmentName?: string;
+  description?: string;
 }

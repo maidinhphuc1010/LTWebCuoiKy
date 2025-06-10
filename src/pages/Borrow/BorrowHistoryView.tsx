@@ -1,37 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Tag } from 'antd';
+import { Table, Tag, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import type { BorrowRecord, BorrowStatus } from '../../services/Borrow/typings';
 import { statusColors, statusLabels } from '../../services/Borrow/constants';
+import { fetchMyBorrowHistory } from '../../services/Borrow/borrowAPI'; // ⬅️ Gọi API ở đây
 import dayjs from 'dayjs';
 
 const BorrowHistoryView: React.FC = () => {
   const [data, setData] = useState<BorrowRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    const raw = localStorage.getItem('borrowData');
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-
-    if (raw && currentUser) {
+    const fetchData = async () => {
+      setLoading(true);
       try {
-        const allRecords = JSON.parse(raw) as BorrowRecord[];
-
-        // Filter records for the current student
-        const filteredRecords = allRecords.filter(
-          (record) => record.student.id === currentUser.id
-        );
-
-        // Sort records by borrow date, most recent first
-        const sortedRecords = filteredRecords.sort(
+        const history = await fetchMyBorrowHistory();
+        const sorted = history.sort(
           (a, b) => dayjs(b.borrowDate).valueOf() - dayjs(a.borrowDate).valueOf()
         );
-
-        // Update state with sorted records
-        setData(sortedRecords);
+        setData(sorted);
       } catch (error) {
-        console.error('Lỗi khi đọc dữ liệu lịch sử mượn:', error);
+        message.error('Không thể tải lịch sử mượn thiết bị.');
+        console.error('Lỗi khi gọi API lịch sử mượn:', error);
+      } finally {
+        setLoading(false);
       }
-    }
+    };
+
+    fetchData();
   }, []);
 
   const columns: ColumnsType<BorrowRecord> = [
@@ -84,6 +80,7 @@ const BorrowHistoryView: React.FC = () => {
         dataSource={data}
         columns={columns}
         pagination={{ pageSize: 10 }}
+        loading={loading}
       />
     </div>
   );

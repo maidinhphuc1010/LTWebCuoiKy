@@ -82,25 +82,20 @@ export const layout: RunTimeLayoutConfig = ({ initialState }) => {
 		footerRender: () => <Footer />,
 
 		onPageChange: () => {
-			const location = window.location; // Sửa lỗi: dùng window.location thay vì const { location } = history
+			const location = window.location;
 			const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 			const isLoginPage = location.pathname.startsWith('/auth/login');
 			if (!currentUser && !isLoginPage) {
 				history.replace('/auth/login');
 				return;
 			}
-			if (initialState?.currentUser) {
-				const isUncheckPath = unCheckPermissionPaths.some((path) => window.location.pathname.includes(path));
-
-				if (location.pathname === '/') {
-					history.replace('/dashboard');
-				} else if (
-					!isUncheckPath &&
-					currentRole &&
-					initialState?.authorizedPermissions?.length &&
-					!initialState?.authorizedPermissions?.find((item) => item.rsname === currentRole)
-				)
-					history.replace('/403');
+			// Nếu đã đăng nhập và vào trang gốc thì chuyển hướng theo quyền
+			if (currentUser && location.pathname === '/') {
+				if (currentUser.role === 'admin') {
+					history.replace('/admin/dashboard');
+				} else if (currentUser.role === 'user') {
+					history.replace('/user-menu/dashboard');
+				}
 			}
 		},
 

@@ -1,4 +1,3 @@
-// typings.d.ts hoặc types.d.ts
 declare namespace Admin {
   export interface Info {
     fullName: string;

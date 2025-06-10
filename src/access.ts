@@ -1,15 +1,24 @@
 import type { IInitialState } from './services/base/typing';
-// import { currentRole } from './utils/ip';
 
 /**
  * @see https://umijs.org/zh-CN/plugins/plugin-access
  * */
 export default function access(initialState: IInitialState) {
-	const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-	const role = currentUser?.role;
+  // Đọc currentUser từ localStorage
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+  } catch (error) {
+    console.error("Lỗi khi đọc dữ liệu người dùng từ localStorage:", error);
+  }
 
-	return {
-		admin: role === 'admin',
-		user: role === 'student',
-	};
+  // Kiểm tra quyền truy cập của user
+  const role = currentUser?.role;
+
+  return {
+    // Quyền truy cập cho admin
+    admin: role === 'admin',
+    // Quyền truy cập cho user (student)
+    user: role === 'student',
+  };
 }

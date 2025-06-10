@@ -1,56 +1,48 @@
 import React from 'react';
-import { Modal, Input, DatePicker, Form, message } from 'antd';
+import { Modal, Form, DatePicker, Input, message } from 'antd';
 
-interface BorrowConfirmModalProps {
+interface Props {
   visible: boolean;
-  device: Device.Info | null;
+  device: any;
   onCancel: () => void;
-  onConfirm: (values: {
-    returnDate: string;
-    description?: string;
-  }) => void;
+  onConfirm: (values: { returnDate: string; description?: string }) => void;
 }
 
-const BorrowConfirmModal: React.FC<BorrowConfirmModalProps> = ({
-  visible,
-  device,
-  onCancel,
-  onConfirm,
-}) => {
+const BorrowConfirmModal: React.FC<Props> = ({ visible, device, onCancel, onConfirm }) => {
   const [form] = Form.useForm();
 
   const handleOk = async () => {
     try {
-      const values = await form.validateFields();
+      const vals = await form.validateFields();
       onConfirm({
-        ...values,
-        returnDate: values.returnDate.format('YYYY-MM-DD'),
+        returnDate: vals.returnDate.format('YYYY-MM-DD'),
+        description: vals.description,
       });
       form.resetFields();
     } catch {
-      message.error('Vui lòng điền đầy đủ thông tin hợp lệ');
+      message.error('Vui lòng nhập đầy đủ thông tin hợp lệ');
     }
   };
 
   return (
     <Modal
       visible={visible}
-      title={`Xác nhận mượn: ${device?.name}`}
+      title={`Mượn thiết bị: ${device?.name}`}
       onCancel={onCancel}
       onOk={handleOk}
-      okText="Xác nhận mượn"
+      okText="Tiếp tục"
       destroyOnClose
     >
-      <Form layout="vertical" form={form}>
+      <Form form={form} layout="vertical">
         <Form.Item
-          label="Ngày hẹn trả"
+          label="Ngày trả"
           name="returnDate"
-          rules={[{ required: true, message: 'Vui lòng chọn ngày trả' }]}
+          rules={[{ required: true, message: 'Chọn ngày trả' }]}
         >
           <DatePicker format="DD/MM/YYYY" style={{ width: '100%' }} />
         </Form.Item>
         <Form.Item label="Lý do mượn" name="description">
-          <Input.TextArea rows={3} placeholder="Nhập lý do mượn thiết bị..." />
+          <Input.TextArea rows={3} placeholder="Nhập lý do (không bắt buộc)" />
         </Form.Item>
       </Form>
     </Modal>

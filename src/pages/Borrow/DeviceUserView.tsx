@@ -1,122 +1,83 @@
 import React, { useEffect, useState } from 'react';
-import { Button, Modal, Table, Input } from 'antd';
+import { Button, Modal, Table, Input, message } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { useModel } from 'umi';
 import type { ColumnsType } from 'antd/es/table';
 import BorrowConfirmModal from './BorrowConfirmModal';
 import BorrowReviewModal from './BorrowReviewModal';
+import useBorrowDevice from '../../models/useBorrowDevice';
 
 const DeviceUserView: React.FC = () => {
-  const { data, getDataDevice, sendBorrowRequest } = useModel('deviceAdmin');
-
+  const { data, getDataDevice } = useModel('deviceAdmin');
   const [descVisible, setDescVisible] = useState(false);
   const [descContent, setDescContent] = useState('');
   const [descTitle, setDescTitle] = useState<{ name: string; department: string } | null>(null);
-  const [loadingId, setLoadingId] = useState<number | null>(null);
-  const [confirmVisible, setConfirmVisible] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<Device.Info | null>(null);
-  const [reviewVisible, setReviewVisible] = useState(false);
-  const [borrowInfo, setBorrowInfo] = useState<{
-    returnDate: string;
-    description?: string;
-  } | null>(null);
+  const [selectedDevice, setSelectedDevice] = useState<any>(null);
   const [searchText, setSearchText] = useState('');
-  const [currentUser, setCurrentUser] = useState<{
-    id: number;
-    fullName: string;
-    code: string;
-    email?: string;
-    phoneNumber?: string;
-  } | null>(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [reviewVisible, setReviewVisible] = useState(false);
+  const [borrowInfo, setBorrowInfo] = useState<{ returnDate: string; description?: string } | null>(null);
+
+  const { handleQuickBorrow, loadingId } = useBorrowDevice(getDataDevice);
 
   useEffect(() => {
-    // Lấy thông tin sinh viên từ localStorage sau khi đăng nhập
     const storedUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-    if (storedUser && storedUser.role === 'student') {
-      setCurrentUser({
-        id: storedUser.id,
-        fullName: storedUser.fullName,
-        code: storedUser.code,
-        email: storedUser.email,
-        phoneNumber: storedUser.phoneNumber,
-      });
+    if (storedUser?.role === 'student') {
+      // có thể lưu để hiển thị nếu cần
     }
-
-    // Lấy dữ liệu thiết bị
     getDataDevice();
-  }, []);
+  }, [getDataDevice]);
 
-  const showDescription = (record: Device.Info) => {
+  const showDescription = (record: any) => {
     setDescContent(record.description);
     setDescTitle({ name: record.name, department: record.department });
     setDescVisible(true);
   };
 
-  const handleConfirmBorrow = (formValues: { returnDate: string; description?: string }) => {
-    setBorrowInfo(formValues);
+  const onBorrowClick = (record: any) => {
+    setSelectedDevice(record);
+    setConfirmVisible(true);
+  };
+
+  const onConfirm = (info: { returnDate: string; description?: string }) => {
+    setBorrowInfo(info);
+    setConfirmVisible(false);
     setReviewVisible(true);
   };
 
-  const handleFinalConfirm = async () => {
-    if (!selectedDevice || !borrowInfo) {
-      Modal.error({
-        title: 'Lỗi',
-        content: 'Chưa chọn thiết bị hoặc thiếu thông tin mượn.',
-      });
-      return;
-    }
-
-    setLoadingId(selectedDevice.id);
-
+  const onReviewConfirm = async () => {
+    if (!selectedDevice || !borrowInfo) return;
     try {
-      await sendBorrowRequest({
-        deviceId: selectedDevice.id,
-        deviceName: selectedDevice.name,
-        status: 'waiting',
-        returnDate: borrowInfo.returnDate,
-        description: borrowInfo.description,
-      });
-
-      Modal.success({
-        title: 'Gửi yêu cầu thành công',
-        content: `Yêu cầu mượn thiết bị "${selectedDevice.name}" đã được gửi.`,
-      });
-
-      getDataDevice(); // Cập nhật lại dữ liệu thiết bị sau khi yêu cầu mượn
-    } catch (error) {
-      Modal.error({
-        title: 'Lỗi',
-        content: 'Không thể gửi yêu cầu. Vui lòng thử lại.',
-      });
-    } finally {
-      setConfirmVisible(false);
+      await handleQuickBorrow(selectedDevice.name, borrowInfo);
       setReviewVisible(false);
-      setLoadingId(null);
+      setSelectedDevice(null);
+      setBorrowInfo(null);
+    } catch (error: any) {
+      message.error(error.message || 'Lỗi mượn thiết bị');
     }
   };
 
-  const filteredData = data.filter((item) =>
+  const filteredData = data.filter(item =>
     item.name.toLowerCase().includes(searchText.toLowerCase())
   );
 
-  const columns: ColumnsType<Device.Info> = [
-    { title: 'Tên thiết bị', dataIndex: 'name', key: 'name', width: 180 },
-    { title: 'Loại thiết bị', dataIndex: 'type', key: 'type', width: 140 },
-    { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity', width: 100 },
-    { title: 'Đơn vị quản lý', dataIndex: 'department', key: 'department', width: 160 },
+  const columns: ColumnsType<any> = [
+    { title: 'Tên thiết bị', dataIndex: 'name', key: 'name' },
+    { title: 'Loại', dataIndex: 'type', key: 'type' },
+    { title: 'Số lượng', dataIndex: 'quantity', key: 'quantity' },
+    { title: 'Đơn vị quản lý', dataIndex: 'department', key: 'department' },
     {
       title: 'Mô tả',
       dataIndex: 'description',
       key: 'description',
-      width: 250,
       render: (text: string, record) => {
         const shortDesc = text.length > 50 ? text.slice(0, 40) + '...' : text;
         return (
           <>
-            <span>{shortDesc} </span>
+            {shortDesc}{' '}
             {text.length > 30 && (
               <EyeOutlined
-                style={{ color: '#1890ff', cursor: 'pointer' }}
+                style={{ cursor: 'pointer', color: '#1890ff' }}
                 onClick={() => showDescription(record)}
               />
             )}
@@ -127,23 +88,12 @@ const DeviceUserView: React.FC = () => {
     {
       title: 'Thao tác',
       key: 'action',
-      width: 140,
       align: 'center',
       render: (_, record) => (
         <Button
           type="primary"
-          loading={loadingId === record.id}
-          onClick={() => {
-            if (record.quantity === 0) {
-              Modal.warning({
-                title: 'Không thể mượn thiết bị',
-                content: `Thiết bị "${record.name}" hiện không còn số lượng để cho mượn.`,
-              });
-              return;
-            }
-            setSelectedDevice(record);
-            setConfirmVisible(true);
-          }}
+          loading={loadingId === record.name}
+          onClick={() => onBorrowClick(record)}
         >
           Mượn ngay
         </Button>
@@ -153,37 +103,21 @@ const DeviceUserView: React.FC = () => {
 
   return (
     <div>
-      {/* Ô tìm kiếm nằm phía trên bên phải */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
         <Input
           placeholder="Tìm theo tên thiết bị"
           value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
+          onChange={e => setSearchText(e.target.value)}
           style={{ width: 300 }}
         />
       </div>
 
-      <Table
-        rowKey="id"
-        dataSource={filteredData}
-        columns={columns}
-        pagination={{ pageSize: 8 }}
-        scroll={{ x: 1000 }}
-      />
+      <Table rowKey="id" dataSource={filteredData} columns={columns} pagination={{ pageSize: 8 }} />
 
-      <Modal
-        visible={descVisible}
-        footer={null}
-        onCancel={() => setDescVisible(false)}
-        title="Mô tả chi tiết"
-        destroyOnClose
-        width={500}
-      >
+      <Modal visible={descVisible} title="Mô tả chi tiết" footer={null} onCancel={() => setDescVisible(false)}>
         {descTitle && (
           <p>
-            <strong>
-              Thiết bị {descTitle.name} do {descTitle.department} quản lý
-            </strong>
+            <strong>Thiết bị {descTitle.name} do {descTitle.department} quản lý</strong>
           </p>
         )}
         <p style={{ whiteSpace: 'pre-wrap' }}>{descContent}</p>
@@ -193,21 +127,17 @@ const DeviceUserView: React.FC = () => {
         visible={confirmVisible}
         device={selectedDevice}
         onCancel={() => setConfirmVisible(false)}
-        onConfirm={handleConfirmBorrow}
+        onConfirm={onConfirm}
       />
 
-      {/* Chỉ hiển thị BorrowReviewModal khi currentUser có giá trị */}
-      {selectedDevice && borrowInfo && currentUser && (
-        <BorrowReviewModal
-          visible={reviewVisible}
-          device={selectedDevice}
-          student={currentUser} // Truyền thông tin sinh viên từ localStorage
-          returnDate={borrowInfo.returnDate}
-          description={borrowInfo.description}
-          onCancel={() => setReviewVisible(false)}
-          onConfirm={handleFinalConfirm}
-        />
-      )}
+      <BorrowReviewModal
+        visible={reviewVisible}
+        device={selectedDevice}
+        returnDate={borrowInfo?.returnDate || ''}
+        description={borrowInfo?.description}
+        onCancel={() => setReviewVisible(false)}
+        onConfirm={onReviewConfirm}
+      />
     </div>
   );
 };

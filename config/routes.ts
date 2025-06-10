@@ -7,7 +7,7 @@
 				path: '/auth/login',
 				layout: false,
 				name: 'Đăng nhập',
-				component: './Auth/Login',
+				component: './Auth/LoginPage',
 			},
 			{
 				path: '/auth',
@@ -44,7 +44,7 @@
 		name: 'About',
 		component: './TienIch/GioiThieu',
 		hideInMenu: true,
-		access: 'admin||user',
+		// public, không cần access
 	},
 	// {
 	// 	path: '/random-user',
@@ -92,7 +92,7 @@
 		path: '/admin',
 		name: 'Quản lý admin',
 		icon: 'UserOutlined',
-		component: './Admin/AdminManagement',
+		component: './Admin/index', // thay đổi component
 		access: 'admin',
 	},
 	{
@@ -120,7 +120,7 @@
 	},
 	{
 		path: '/',
-		redirect: '/auth/login',
+		redirect: '/admin/dashboard',
 	},
 	{
 		path: '/403',
